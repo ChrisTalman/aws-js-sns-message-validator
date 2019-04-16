@@ -107,7 +107,7 @@ var getCertificate = function (certUrl, cb) {
         var chunks = [];
 
         if(res.statusCode !== 200){
-            return cb(new Error('Certificate could not be retrieved'));
+            return cb(new CertificateIrretrievableError());
         }
 
         res
@@ -123,8 +123,7 @@ var getCertificate = function (certUrl, cb) {
 
 var validateSignature = function (message, settler, encoding) {
     if (message['SignatureVersion'] !== '1') {
-        settler.reject(new Error('The signature version '
-            + message['SignatureVersion'] + ' is not supported.'));
+        settler.reject(new SignatureVersionError(message.SignatureVersion));
         return;
     }
 
@@ -152,7 +151,7 @@ var validateSignature = function (message, settler, encoding) {
             if (verifier.verify(certificate, message['Signature'], 'base64')) {
                 settler.resolve(message);
             } else {
-                settler.reject(new Error('The message signature is invalid.'));
+                settler.reject(new SignatureInvalidError());
             }
         } catch (e) {
             settler.reject(e);
@@ -204,12 +203,12 @@ MessageValidator.prototype.validate = function (hash, cb) {
     hash = convertLambdaMessage(hash);
 
     if (!validateMessageStructure(hash)) {
-        settler.reject(new Error('Message missing required keys.'));
+        settler.reject(new MessageKeysMissingError());
         return;
     }
 
     if (!validateUrl(hash['SigningCertURL'], this.hostPattern)) {
-        settler.reject(new Error('The certificate is located on an invalid domain.'));
+        settler.reject(new InvalidDomainError());
         return;
     }
 
@@ -254,4 +253,73 @@ class Settler
 	};
 };
 
-module.exports = MessageValidator;
+class ValidationError extends Error
+{
+	constructor(code, message)
+	{
+		super(message);
+		this.code = code;
+	};
+};
+
+class MessageKeysMissingError extends ValidationError
+{
+	constructor()
+	{
+		const message = 'Message missing required keys';
+		super(message);
+	};
+};
+
+class InvalidDomainError extends ValidationError
+{
+	constructor()
+	{
+		const code = 'invalidDomain';
+		const message = 'The certificate is located on an invalid domain';
+		super(code, message);
+	};
+};
+
+class CertificateIrretrievableError extends ValidationError
+{
+	constructor()
+	{
+		const code = 'certificateIrretrievable';
+		const message = 'Certificate could not be retrieved';
+		super(code, message);
+	};
+};
+
+class SignatureVersionError extends ValidationError
+{
+	constructor(version)
+	{
+		const code = 'signatureVersion';
+		const message = 'The signature version ' + version + ' is not supported';
+		super(code, message);
+		this.version = version;
+	};
+};
+
+class SignatureInvalidError extends ValidationError
+{
+	constructor()
+	{
+		const code = 'signatureInvalid';
+		const message = 'The message signature is invalid';
+		super(code, message);
+	};
+};
+
+module.exports =
+{
+	default: MessageValidator,
+	MessageValidator,
+	ValidationError,
+	MessageKeysMissingError,
+	InvalidDomainError,
+	CertificateIrretrievableError,
+	SignatureVersionError,
+	SignatureInvalidError
+};
