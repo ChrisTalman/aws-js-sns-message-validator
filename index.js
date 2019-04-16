@@ -189,7 +189,7 @@ function MessageValidator(hostPattern, encoding) {
  */
 MessageValidator.prototype.validate = function (hash, cb) {
 	const settler = new Settler(cb);
-	setTimeout(() => validate(hash, settler), 0);
+	setTimeout(() => validate(hash, settler).bind(this), 0);
 	if (settler.promise) return settler.promise;
 };
 
