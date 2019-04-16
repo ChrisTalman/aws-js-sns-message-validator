@@ -314,7 +314,6 @@ class SignatureInvalidError extends ValidationError
 
 module.exports =
 {
-	default: MessageValidator,
 	MessageValidator,
 	ValidationError,
 	MessageKeysMissingError,
