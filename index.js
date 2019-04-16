@@ -266,8 +266,9 @@ class MessageKeysMissingError extends ValidationError
 {
 	constructor()
 	{
+		const code = 'messageKeysMissing';
 		const message = 'Message missing required keys';
-		super(message);
+		super(code, message);
 	};
 };
 
