@@ -121,9 +121,9 @@ var getCertificate = function (certUrl, cb) {
     }).on('error', cb)
 };
 
-var validateSignature = function (message, cb, encoding) {
+var validateSignature = function (message, settler, encoding) {
     if (message['SignatureVersion'] !== '1') {
-        cb(new Error('The signature version '
+        settler.reject(new Error('The signature version '
             + message['SignatureVersion'] + ' is not supported.'));
         return;
     }
@@ -145,17 +145,17 @@ var validateSignature = function (message, cb, encoding) {
 
     getCertificate(message['SigningCertURL'], function (err, certificate) {
         if (err) {
-            cb(err);
+            settler.reject(err);
             return;
         }
         try {
             if (verifier.verify(certificate, message['Signature'], 'base64')) {
-                cb(null, message);
+                settler.resolve(message);
             } else {
-                cb(new Error('The message signature is invalid.'));
+                settler.reject(new Error('The message signature is invalid.'));
             }
         } catch (e) {
-            cb(e);
+            settler.reject(e);
         }
     });
 };
@@ -189,11 +189,14 @@ function MessageValidator(hostPattern, encoding) {
  * @param {validationCallback} cb
  */
 MessageValidator.prototype.validate = function (hash, cb) {
+
+	const settler = new Settler(cb);
+
     if (typeof hash === 'string') {
         try {
             hash = JSON.parse(hash);
         } catch (err) {
-            cb(err);
+            settler.reject(err);
             return;
         }
     }
@@ -201,16 +204,54 @@ MessageValidator.prototype.validate = function (hash, cb) {
     hash = convertLambdaMessage(hash);
 
     if (!validateMessageStructure(hash)) {
-        cb(new Error('Message missing required keys.'));
+        settler.reject(new Error('Message missing required keys.'));
         return;
     }
 
     if (!validateUrl(hash['SigningCertURL'], this.hostPattern)) {
-        cb(new Error('The certificate is located on an invalid domain.'));
+        settler.reject(new Error('The certificate is located on an invalid domain.'));
         return;
     }
 
-    validateSignature(hash, cb, this.encoding);
+    validateSignature(hash, settler, this.encoding);
+};
+
+class Settler
+{
+	constructor(callback)
+	{
+		if (callback)
+		{
+			this._callback = callback;
+		}
+		else
+		{
+			this._promise = new Promise
+			(
+				(resolve, reject) =>
+				{
+					this._resolve = resolve;
+					this._reject = reject;
+				}
+			);
+		};
+	};
+	resolve(message)
+	{
+		if (this.callback)
+		{
+			this.callback(null, message);
+		}
+		else
+		{
+			this.resolve(message);
+		};
+	};
+	reject(error)
+	{
+		const executor = this.callback || this.reject;
+		executor(error);
+	};
 };
 
 module.exports = MessageValidator;
