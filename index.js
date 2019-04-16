@@ -188,10 +188,14 @@ function MessageValidator(hostPattern, encoding) {
  * @param {validationCallback} cb
  */
 MessageValidator.prototype.validate = function (hash, cb) {
-
 	const settler = new Settler(cb);
+	setTimeout(() => validate(hash, settler), 0);
+	if (settler.promise) return settler.promise;
+};
 
-    if (typeof hash === 'string') {
+function validate(hash, settler)
+{
+	if (typeof hash === 'string') {
         try {
             hash = JSON.parse(hash);
         } catch (err) {
@@ -200,7 +204,15 @@ MessageValidator.prototype.validate = function (hash, cb) {
         }
     }
 
-    hash = convertLambdaMessage(hash);
+	try
+	{
+    	hash = convertLambdaMessage(hash);
+	}
+	catch (error)
+	{
+		settler.reject(err);
+		return;
+	}
 
     if (!validateMessageStructure(hash)) {
         settler.reject(new MessageKeysMissingError());
@@ -212,7 +224,15 @@ MessageValidator.prototype.validate = function (hash, cb) {
         return;
     }
 
-    validateSignature(hash, settler, this.encoding);
+	try
+	{
+    	validateSignature(hash, settler, this.encoding);
+	}
+	catch (error)
+	{
+		settler.reject(err);
+		return;
+	}
 };
 
 class Settler
