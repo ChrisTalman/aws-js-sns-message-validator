@@ -221,16 +221,16 @@ class Settler
 	{
 		if (callback)
 		{
-			this._callback = callback;
+			this.callback = callback;
 		}
 		else
 		{
-			this._promise = new Promise
+			this.promise = new Promise
 			(
-				(resolve, reject) =>
+				(_resolve, _reject) =>
 				{
-					this._resolve = resolve;
-					this._reject = reject;
+					this.resolve = _resolve;
+					this.reject = _reject;
 				}
 			);
 		};
